@@ -1,0 +1,89 @@
+{
+  "game": {
+    "id": "kd",
+    "name": "Kingdoms of Dominion",
+    "short_name": "Kingdoms",
+    "tagline": "THE FRONTIER AWAITS",
+    "headline": "Raise a kingdom.\nShape the realm.",
+    "description": "Build your city, rally your forces, and claim your place in a living world.",
+    "version": "0.1.0"
+  },
+  "theme": {
+    "primary": "#42d6b0",
+    "secondary": "#ffce73",
+    "surface": "#142227",
+    "background": "#091416",
+    "canvas": "#0d1b1e",
+    "text": "#f2f6e9",
+    "muted": "#a7bbb4"
+  },
+  "assets": {
+    "prefix": "assets/art/",
+    "splash": "kingdom_splash.png",
+    "city_own": "city_own.png",
+    "city_enemy": "city_enemy.png",
+    "buildings": {
+      "town_hall": "building_town_hall.png",
+      "farm": "building_farm.png",
+      "lumber_mill": "building_lumber_mill.png",
+      "quarry": "building_quarry.png",
+      "iron_mine": "building_iron_mine.png",
+      "market": "building_market.png",
+      "warehouse": "building_warehouse.png",
+      "barracks": "building_barracks.png",
+      "academy": "building_academy.png",
+      "wall": "building_wall.png",
+      "hospital": "building_hospital.png",
+      "embassy": "building_embassy.png"
+    }
+  },
+  "labels": {
+    "buildings": {
+      "town_hall": "Town Hall",
+      "farm": "Farm",
+      "lumber_mill": "Lumber Mill",
+      "quarry": "Quarry",
+      "iron_mine": "Iron Mine",
+      "market": "Market",
+      "warehouse": "Warehouse",
+      "barracks": "Barracks",
+      "academy": "Academy",
+      "wall": "Wall",
+      "hospital": "Hospital",
+      "embassy": "Embassy / Rally Hall"
+    },
+    "techs": {
+      "agriculture": "Agriculture",
+      "forestry": "Forestry",
+      "masonry": "Masonry",
+      "metallurgy": "Metallurgy",
+      "commerce": "Commerce",
+      "pathfinding": "Pathfinding",
+      "logistics": "Logistics",
+      "cartography": "Cartography",
+      "drill": "Drill",
+      "ironworking": "Ironworking",
+      "siege_craft": "Siege Craft",
+      "tactics": "Tactics",
+      "fortification": "Fortification",
+      "medicine": "Medicine"
+    },
+    "items": {
+      "bundle_small": "Small Supply Bundle",
+      "bundle_large": "Large Supply Bundle",
+      "speed_5m": "5 Minute Speedup",
+      "speed_1h": "1 Hour Speedup",
+      "shield_1d": "1 Day Shield",
+      "scout_kit": "Scout Kit"
+    },
+    "units": ["infantry", "ranged", "cavalry", "siege", "scout"],
+    "heroes": {
+      "aurora": "Aurora",
+      "borin": "Borin",
+      "cinder": "Cinder",
+      "dalia": "Dalia",
+      "eorin": "Eorin",
+      "faye": "Faye"
+    }
+  }
+}

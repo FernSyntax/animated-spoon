@@ -1,0 +1,35 @@
+{
+  "accepted": 491,
+  "clients": 100,
+  "duration_secs": 60,
+  "errors": 258,
+  "latency_ms": {
+    "p50": 692.621963,
+    "p95": 2456.0342419999997,
+    "p99": 2909.318176
+  },
+  "reconnects": 108,
+  "reject_codes": {
+    "Conflict": 483,
+    "InsufficientTroops": 169,
+    "NotFound": 357,
+    "PrerequisiteUnmet": 304
+  },
+  "rejected": 1313,
+  "samples": [
+    "NotFound: not found: monster not found",
+    "PrerequisiteUnmet: prerequisite unmet: barracks 1",
+    "InsufficientTroops: insufficient troops: not enough scout",
+    "NotFound: not found: monster not found",
+    "NotFound: not found: monster not found",
+    "InsufficientTroops: insufficient troops: not enough scout",
+    "Conflict: queue full: construction queue busy",
+    "PrerequisiteUnmet: prerequisite unmet: barracks 1",
+    "PrerequisiteUnmet: prerequisite unmet: requires town_hall 2",
+    "PrerequisiteUnmet: prerequisite unmet: barracks 2",
+    "PrerequisiteUnmet: prerequisite unmet: requires town_hall 2",
+    "NotFound: not found: monster not found"
+  ],
+  "scenario": "mixed",
+  "seed": 5252
+}

@@ -1,0 +1,19 @@
+[package]
+name = "realm-worker"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+kd-common.workspace = true
+kd-store.workspace = true
+kd-engine.workspace = true
+kd-domain.workspace = true
+kd-proto.workspace = true
+tonic.workspace = true
+tokio.workspace = true
+serde_json.workspace = true
+tracing.workspace = true
+anyhow.workspace = true
+metrics.workspace = true
+uuid.workspace = true

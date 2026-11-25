@@ -1,0 +1,245 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  # Allows maintainers to run the full matrix (including slow platform builds)
+  # explicitly from the Actions tab.
+  workflow_dispatch:
+
+# A new push to the same branch supersedes older, still-running checks.
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: 1
+  FLUTTER_VERSION: '3.50.0'
+
+jobs:
+  # -------------------------------------------------------------------------
+  # Rust: format, lint, unit/property tests and real-PostgreSQL integration.
+  # -------------------------------------------------------------------------
+  rust:
+    name: Rust · format, lint, test
+    runs-on: ubuntu-22.04
+    services:
+      postgres-global:
+        image: postgres:16
+        env: { POSTGRES_USER: kd, POSTGRES_PASSWORD: kd, POSTGRES_DB: kd_global }
+        ports: ['15432:5432']
+        options: >-
+          --health-cmd "pg_isready -U kd"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      postgres-a:
+        image: postgres:16
+        env: { POSTGRES_USER: kd, POSTGRES_PASSWORD: kd, POSTGRES_DB: kd_realm_a }
+        ports: ['15433:5432']
+        options: >-
+          --health-cmd "pg_isready -U kd"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      nats:
+        image: nats:2.11
+        ports: ['4222:4222']
+      valkey:
+        image: valkey/valkey:8
+        ports: ['6379:6379']
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@1.99.0
+        with:
+          components: rustfmt, clippy
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Check formatting
+        run: cargo fmt --all -- --check
+
+      - name: Lint with Clippy (warnings are errors)
+        run: cargo clippy --workspace --all-targets -- -D warnings
+
+      - name: Unit, property and binary tests
+        run: cargo test --workspace --lib --bins
+
+      - name: Realm engine integration tests
+        env:
+          KD_TEST_DB_A: postgres://kd:kd@localhost:15433/kd_realm_a
+        run: cargo test -p kd-engine --test engine -- --test-threads=2
+
+      - name: Multiplayer integration tests
+        env:
+          KD_TEST_DB_A: postgres://kd:kd@localhost:15433/kd_realm_a
+        run: cargo test -p kd-engine --test multiplayer -- --test-threads=2
+
+      - name: Golden happy-path tests
+        env:
+          KD_TEST_DB_A: postgres://kd:kd@localhost:15433/kd_realm_a
+        run: cargo test -p kd-engine --test golden -- --test-threads=1
+
+      - name: Build all binaries
+        run: cargo build --workspace
+
+  # -------------------------------------------------------------------------
+  # Rust dependency audit. Non-blocking while advisories are triaged; open an
+  # issue for every report instead of silently ignoring it.
+  # -------------------------------------------------------------------------
+  security:
+    name: Rust · dependency audit
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: taiki-e/install-action@cargo-audit
+      - name: Audit Cargo.lock
+        run: cargo audit
+
+  # -------------------------------------------------------------------------
+  # Flutter static analysis and unit/widget tests (fast, single runner).
+  # -------------------------------------------------------------------------
+  flutter-check:
+    name: Flutter · analyze, format, test
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          cache: true
+      - name: Install packages
+        working-directory: clients/game
+        run: flutter pub get
+      - name: Check Dart formatting
+        working-directory: clients/game
+        run: dart format --output=none --set-exit-if-changed .
+      - name: Analyze
+        working-directory: clients/game
+        run: flutter analyze
+      - name: Unit and widget tests
+        working-directory: clients/game
+        run: flutter test
+
+  # -------------------------------------------------------------------------
+  # Native + web release builds. Each target uses the runner that can produce
+  # it: Linux/Android/Web on Ubuntu, macOS/iOS on macOS, Windows on Windows.
+  # -------------------------------------------------------------------------
+  flutter-build:
+    name: Flutter · build ${{ matrix.target }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: web
+            os: ubuntu-22.04
+            artifact: clients/game/build/web
+          - target: linux
+            os: ubuntu-22.04
+            artifact: clients/game/build/linux/x64/release/bundle
+          - target: android
+            os: ubuntu-22.04
+            artifact: clients/game/build/app/outputs/flutter-apk/app-release.apk
+          - target: macos
+            os: macos-latest
+            artifact: clients/game/build/macos/Build/Products/Release
+          - target: ios
+            os: macos-latest
+            artifact: clients/game/build/ios/iphoneos/Runner.app
+          - target: windows
+            os: windows-latest
+            artifact: clients/game/build/windows/x64/runner/Release
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          cache: true
+
+      - name: Install Java 17 (Android)
+        if: matrix.target == 'android'
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Install Flutter Linux dependencies
+        if: matrix.target == 'linux'
+        run: >-
+          sudo apt-get update && sudo apt-get install -y
+          clang cmake ninja-build pkg-config libgtk-3-dev liblzma-dev
+
+      - name: Enable desktop support
+        if: contains(fromJSON('["linux", "macos", "windows"]'), matrix.target)
+        shell: bash
+        run: flutter config --enable-${{ matrix.target }}-desktop
+
+      - name: Verify toolchain
+        shell: bash
+        run: flutter doctor -v
+
+      - name: Install packages
+        working-directory: clients/game
+        run: flutter pub get
+
+      - name: Build ${{ matrix.target }} (release)
+        shell: bash
+        working-directory: clients/game
+        run: |
+          case "${{ matrix.target }}" in
+            android) flutter build apk --release ;;
+            ios)
+              # distribution/signing is intentionally out of scope for this example.
+              flutter build ios --release --no-codesign
+              ;;
+            *) flutter build "${{ matrix.target }}" --release ;;
+          esac
+
+      - name: Upload ${{ matrix.target }} artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: kd-game-${{ matrix.target }}
+          path: ${{ matrix.artifact }}
+          if-no-files-found: warn
+          retention-days: 7
+
+  # -------------------------------------------------------------------------
+  # Deployment templates and infrastructure-as-code stay syntactically valid.
+  # -------------------------------------------------------------------------
+  templates:
+    name: Deployment templates
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate Docker Compose
+        run: docker compose config >/dev/null
+
+      - name: Validate Kubernetes manifests
+        run: |
+          python3 - <<'PY'
+          import sys, yaml
+          from pathlib import Path
+          for path in Path("deploy/kubernetes").glob("*.yaml"):
+              docs = [d for d in yaml.safe_load_all(path.read_text()) if d]
+              if not docs or any("kind" not in d for d in docs):
+                  sys.exit(f"missing kind in {path}")
+          print("kubernetes manifests parsed OK")
+          PY
+
+      - uses: opentofu/setup-opentofu@v1
+        with:
+          tofu_version: '1.9.0'
+
+      - name: Validate OpenTofu example
+        run: |
+          tofu -chdir=deploy/opentofu init -backend=false -input=false
+          tofu -chdir=deploy/opentofu validate -no-color

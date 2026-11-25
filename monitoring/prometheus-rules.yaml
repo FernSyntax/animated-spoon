@@ -1,0 +1,27 @@
+groups:
+  - name: kd-slo-alerts
+    rules:
+      - alert: KdHighCommandLatency
+        expr: histogram_quantile(0.95, rate(kd_command_latency_ms_bucket[5m])) > 100
+        for: 5m
+        labels: { severity: warning }
+        annotations:
+          summary: "p95 committed command latency above 100ms in region"
+      - alert: KdSchedulerBacklog
+        expr: kd_scheduler_backlog > 1000
+        for: 5m
+        labels: { severity: warning }
+        annotations:
+          summary: "realm scheduler backlog growing"
+      - alert: KdOutboxLag
+        expr: rate(kd_outbox_published_total[5m]) == 0 and kd_scheduler_backlog > 0
+        for: 10m
+        labels: { severity: critical }
+        annotations:
+          summary: "outbox relay appears stalled"
+      - alert: KdCommandErrors
+        expr: rate(kd_commands_total{code!="Ok"}[5m]) > 50
+        for: 5m
+        labels: { severity: warning }
+        annotations:
+          summary: "high command rejection/error rate (correlate with game-rule rejections)"

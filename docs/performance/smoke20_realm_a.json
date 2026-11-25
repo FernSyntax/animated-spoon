@@ -1,0 +1,38 @@
+{
+  "accepted": 26,
+  "clients": 10,
+  "duration_secs": 60,
+  "errors": 0,
+  "latency_ms": {
+    "p50": 3.0222439999999997,
+    "p95": 885.96838,
+    "p99": 1180.827863
+  },
+  "reconnects": 0,
+  "reject_codes": {
+    "Conflict": 5,
+    "InsufficientTroops": 4,
+    "Internal": 520,
+    "InvalidArgument": 40,
+    "NoTarget": 31,
+    "NotFound": 136,
+    "PrerequisiteUnmet": 24
+  },
+  "rejected": 760,
+  "samples": [
+    "InvalidArgument: invalid argument: out of bounds",
+    "InvalidArgument: invalid argument: out of bounds",
+    "InvalidArgument: invalid argument: out of bounds",
+    "InvalidArgument: invalid argument: out of bounds",
+    "InvalidArgument: invalid argument: out of bounds",
+    "InvalidArgument: invalid argument: out of bounds",
+    "InvalidArgument: invalid argument: out of bounds",
+    "NotFound: not found: node not found",
+    "InvalidArgument: invalid argument: out of bounds",
+    "InvalidArgument: invalid argument: out of bounds",
+    "InvalidArgument: invalid argument: out of bounds",
+    "InvalidArgument: invalid argument: out of bounds"
+  ],
+  "scenario": "mixed",
+  "seed": 20241
+}

@@ -1,0 +1,18 @@
+{
+  "title": "Kingdoms of Dominion — realm health",
+  "uid": "kd-realm-health",
+  "schemaVersion": 39,
+  "panels": [
+    { "type": "timeseries", "title": "Command latency p95 (ms)", "targets": [
+      { "expr": "histogram_quantile(0.95, rate(kd_command_latency_ms_bucket[5m]))" } ] },
+    { "type": "timeseries", "title": "Scheduler backlog / lag", "targets": [
+      { "expr": "kd_scheduler_backlog" }, { "expr": "kd_scheduler_lag_ms" } ] },
+    { "type": "timeseries", "title": "Outbox published / failures", "targets": [
+      { "expr": "rate(kd_outbox_published_total[5m])" },
+      { "expr": "rate(kd_outbox_publish_failures_total[5m])" } ] },
+    { "type": "timeseries", "title": "Commands by code", "targets": [
+      { "expr": "sum by (code) (rate(kd_commands_total[5m]))" } ] },
+    { "type": "stat", "title": "Events processed", "targets": [
+      { "expr": "sum(kd_events_processed_total)" } ] }
+  ]
+}

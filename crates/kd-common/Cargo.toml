@@ -1,0 +1,21 @@
+[package]
+name = "kd-common"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+kd-proto = { path = "../kd-proto" }
+serde.workspace = true
+serde_json.workspace = true
+sqlx.workspace = true
+argon2.workspace = true
+jsonwebtoken.workspace = true
+chrono.workspace = true
+uuid.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true
+metrics.workspace = true
+metrics-exporter-prometheus.workspace = true
+anyhow.workspace = true
+thiserror.workspace = true

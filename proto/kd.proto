@@ -1,0 +1,238 @@
+// Kingdoms of Dominion — canonical wire contract (intra-service gRPC + client WS frames).
+// One schema generates Rust (prost/tonic) and Dart bindings.
+syntax = "proto3";
+package kd.v1;
+
+// ----------------------------- common -----------------------------
+message Empty {}
+message Vec2 { int32 x = 1; int32 y = 2; }
+
+message Resources {
+  int64 food = 1;
+  int64 wood = 2;
+  int64 stone = 3;
+  int64 iron = 4;
+  int64 gold = 5;
+}
+
+enum ErrorCode {
+  ERROR_CODE_UNSPECIFIED = 0;
+  OK = 1;
+  UNAUTHENTICATED = 2;
+  PERMISSION_DENIED = 3;
+  NOT_FOUND = 4;
+  INVALID_ARGUMENT = 5;
+  CONFLICT = 6;
+  INSUFFICIENT_RESOURCES = 7;
+  INSUFFICIENT_TROOPS = 8;
+  PREREQUISITE_UNMET = 9;
+  QUEUE_FULL = 10;
+  BUSY = 11;
+  STALE_VERSION = 12;
+  CROSS_REALM = 13;
+  RATE_LIMITED = 14;
+  SHIELDED = 15;
+  NO_TARGET = 16;
+  INTERNAL = 17;
+  DUPLICATE = 18;
+  NOT_OWNER = 19;
+}
+
+// ------------------------- control plane --------------------------
+message RegisterRequest { string username = 1; string password = 2; string display_name = 3; }
+message RegisterResponse { string account_id = 1; }
+message LoginRequest { string username = 1; string password = 2; }
+message LoginResponse { string token = 1; int64 expires_at_unix = 2; string account_id = 3; }
+message LogoutRequest { string token = 1; }
+message RealmInfo {
+  string realm_id = 1;
+  string name = 2;
+  string status = 3;
+  uint32 players = 4;
+  string shard = 5;
+}
+message ListRealmsResponse { repeated RealmInfo realms = 1; }
+message JoinRealmRequest { string realm_id = 1; }
+message JoinRealmResponse { string player_id = 1; bool created_city = 2; }
+message CreateRealmRequest { string name = 1; string shard = 2; }
+message CreateRealmResponse { string realm_id = 1; }
+message RealmMembership { string realm_id = 1; string player_id = 2; }
+message ValidateRequest { string token = 1; }
+message ValidateResponse {
+  string account_id = 1;
+  string username = 2;
+  repeated RealmMembership memberships = 3;
+}
+message GetRealmRouteRequest { string realm_id = 1; }
+message GetRealmRouteResponse { string realm_id = 1; string shard = 2; string worker_address = 3; }
+
+service ControlPlane {
+  rpc Register(RegisterRequest) returns (RegisterResponse);
+  rpc Login(LoginRequest) returns (LoginResponse);
+  rpc Logout(LogoutRequest) returns (Empty);
+  rpc Validate(ValidateRequest) returns (ValidateResponse);
+  rpc ListRealms(Empty) returns (ListRealmsResponse);
+  rpc JoinRealm(JoinRealmRequest) returns (JoinRealmResponse);
+  rpc CreateRealm(CreateRealmRequest) returns (CreateRealmResponse);
+  rpc GetRealmRoute(GetRealmRouteRequest) returns (GetRealmRouteResponse);
+}
+
+// ----------------------- realm internal RPC -----------------------
+message SubmitCommandRequest {
+  string realm_id = 1;
+  string principal_player_id = 2;
+  string command_id = 3;
+  CommandPayload payload = 4;
+}
+message CommandResult {
+  string command_id = 1;
+  ErrorCode code = 2;
+  string message = 3;
+  uint64 state_version = 4;
+  int64 server_time_unix_ms = 5;
+  bytes state_json = 6; // authoritative per-player state patch after success
+}
+message SnapshotRequest {
+  string realm_id = 1;
+  string principal_player_id = 2;
+  repeated Vec2 chunks = 3; // requested viewport chunks
+}
+message SnapshotResponse {
+  string realm_id = 1;
+  uint64 version = 2;
+  bytes state_json = 3;   // private player + city state
+  bytes map_json = 4;     // visible tiles/entities for requested chunks
+  int64 server_time_unix_ms = 5;
+  string cursor = 6;
+}
+message WorkerHealth { string worker_id = 1; repeated string realms = 2; bool ready = 3; }
+message EnsurePlayerRequest {
+  string realm_id = 1;
+  string account_id = 2;
+  string player_id = 3;
+  string name = 4;
+}
+message EnsurePlayerResponse { string player_id = 1; bool created = 2; }
+message AdvanceClockRequest { string realm_id = 1; int64 delta_micros = 2; }
+message AdvanceClockResponse { int64 clock_now_ms = 1; }
+
+service RealmService {
+  rpc SubmitCommand(SubmitCommandRequest) returns (CommandResult);
+  rpc GetSnapshot(SnapshotRequest) returns (SnapshotResponse);
+  rpc Health(Empty) returns (WorkerHealth);
+  rpc EnsurePlayer(EnsurePlayerRequest) returns (EnsurePlayerResponse);
+  // Dev/test only: disabled in production builds and when dev_mode=false.
+  rpc AdvanceClock(AdvanceClockRequest) returns (AdvanceClockResponse);
+}
+
+// --------------------------- commands -----------------------------
+message CommandPayload {
+  oneof action {
+    CreateCityCmd create_city = 1;
+    UpgradeBuildingCmd upgrade_building = 2;
+    StartResearchCmd start_research = 3;
+    TrainTroopsCmd train_troops = 4;
+    HealTroopsCmd heal_troops = 5;
+    UseItemCmd use_item = 6;
+    ScoutTileCmd scout_tile = 7;
+    AttackMonsterCmd attack_monster = 8;
+    GatherCmd gather = 9;
+    AttackCityCmd attack_city = 10;
+    AttackFortCmd attack_fort = 11;
+    ReinforceCmd reinforce = 12;
+    TransportCmd transport = 13;
+    RecallCmd recall = 14;
+    SetShieldCmd set_shield = 15;
+    CreateAllianceCmd create_alliance = 16;
+    AllianceInviteCmd alliance_invite = 17;
+    AllianceAcceptCmd alliance_accept = 18;
+    AllianceJoinCmd alliance_join = 19;
+    AllianceLeaveCmd alliance_leave = 20;
+    AllianceKickCmd alliance_kick = 21;
+    AllianceHelpCmd alliance_help = 22;
+    RallyCreateCmd rally_create = 23;
+    RallyJoinCmd rally_join = 24;
+    RallyCancelCmd rally_cancel = 25;
+    ChatCmd chat = 26;
+    SwitchCapitalCmd switch_capital = 27;
+    RecruitHeroCmd recruit_hero = 28;
+    DemolishBuildingCmd demolish_building = 29;
+    MarketBuyCmd market_buy = 30;
+    MarketSellCmd market_sell = 31;
+  }
+}
+
+message CreateCityCmd { string name = 1; Vec2 pos = 2; }
+message UpgradeBuildingCmd { string city_id = 1; string building = 2; }
+message StartResearchCmd { string tech = 1; }
+message TrainTroopsCmd { string city_id = 1; string unit = 2; uint32 tier = 3; uint32 count = 4; }
+message HealTroopsCmd { string city_id = 1; string unit = 2; uint32 tier = 3; uint32 count = 4; }
+message UseItemCmd { string item = 1; string target_city_id = 2; }
+message ScoutTileCmd { Vec2 pos = 1; }
+message AttackMonsterCmd { string city_id = 1; string monster_id = 2; }
+message GatherCmd { string city_id = 1; string node_id = 2; }
+message AttackCityCmd { string city_id = 1; string target_city_id = 2; }
+message AttackFortCmd { string city_id = 1; string fort_id = 2; }
+message ReinforceCmd { string city_id = 1; string target_city_id = 2; repeated TroopSend troops = 3; }
+message TransportCmd { string city_id = 1; string target_city_id = 2; Resources resources = 3; }
+message RecallCmd { string march_id = 1; }
+message SetShieldCmd { uint32 hours = 1; }
+message CreateAllianceCmd { string name = 1; string tag = 2; }
+message AllianceInviteCmd { string player_id = 1; }
+message AllianceAcceptCmd { string alliance_id = 1; }
+message AllianceJoinCmd { string alliance_id = 1; }
+message AllianceLeaveCmd {}
+message AllianceKickCmd { string player_id = 1; }
+message AllianceHelpCmd { string target_player_id = 1; }
+message RallyCreateCmd { string city_id = 1; Vec2 target_pos = 2; int64 start_at_unix_ms = 3; }
+message RallyJoinCmd { string rally_id = 1; repeated TroopSend troops = 2; }
+message RallyCancelCmd { string rally_id = 1; }
+message ChatCmd { string scope = 1; string text = 2; string target_id = 3; }
+message SwitchCapitalCmd { string city_id = 1; }
+message RecruitHeroCmd { string hero = 1; }
+message DemolishBuildingCmd { string city_id = 1; string building = 2; }
+message MarketBuyCmd { string item = 1; uint32 qty = 2; }
+message MarketSellCmd { string item = 1; uint32 qty = 2; }
+message TroopSend { string unit = 1; uint32 tier = 2; uint32 count = 3; }
+
+// ---------------------- gateway <-> client ------------------------
+message WsEnvelope {
+  uint64 seq = 1;
+  oneof body {
+    WsHello hello = 2;
+    SubmitCommandRequest command = 3;
+    CommandResult command_result = 4;
+    DeltaEvent delta = 5;
+    Snapshot snapshot = 6;
+    Heartbeat heartbeat = 7;
+    ErrorMessage error = 8;
+    SubscriptionUpdate subscription = 9;
+  }
+}
+message WsHello { string token = 1; string realm_id = 2; repeated Vec2 chunks = 3; string cursor = 4; }
+message Heartbeat { int64 client_time_unix_ms = 1; }
+message ErrorMessage { ErrorCode code = 1; string message = 2; }
+message SubscriptionUpdate { repeated Vec2 chunks = 1; bool all_private = 2; string cursor = 3; }
+message DeltaEvent {
+  string event_id = 1;
+  string realm_id = 2;
+  string event_type = 3;
+  Vec2 pos = 4;            // spatial routing key (absent => global)
+  bool has_pos = 12;
+  string owner_player_id = 5;
+  bool private = 6;
+  repeated string visible_players = 7;
+  int64 server_time_unix_ms = 8;
+  bytes payload_json = 9;
+  string cursor = 10;
+}
+
+// A convenience client-facing snapshot mirroring SnapshotResponse but embedded in WS.
+message Snapshot {
+  string realm_id = 1;
+  uint64 version = 2;
+  bytes state_json = 3;
+  bytes map_json = 4;
+  int64 server_time_unix_ms = 5;
+  string cursor = 6;
+}

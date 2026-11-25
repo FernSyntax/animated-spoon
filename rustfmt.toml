@@ -1,0 +1,4 @@
+# Rust formatting policy. Keep this file small: only stable rustfmt options so
+# that `cargo fmt` behaves identically on every contributor's machine and in CI.
+edition = "2021"
+max_width = 100

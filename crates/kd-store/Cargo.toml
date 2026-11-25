@@ -1,0 +1,10 @@
+[package]
+name = "kd-store"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+kd-common.workspace = true
+sqlx.workspace = true
+anyhow.workspace = true

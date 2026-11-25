@@ -1,0 +1,34 @@
+{
+  "accepted": 62,
+  "clients": 10,
+  "duration_secs": 60,
+  "errors": 0,
+  "latency_ms": {
+    "p50": 143.60141000000002,
+    "p95": 545.636263,
+    "p99": 1792.933606
+  },
+  "reconnects": 0,
+  "reject_codes": {
+    "InvalidArgument": 50,
+    "NoTarget": 130,
+    "NotFound": 493
+  },
+  "rejected": 673,
+  "samples": [
+    "InvalidArgument: invalid argument: out of bounds",
+    "InvalidArgument: invalid argument: out of bounds",
+    "InvalidArgument: invalid argument: out of bounds",
+    "InvalidArgument: invalid argument: out of bounds",
+    "InvalidArgument: invalid argument: out of bounds",
+    "InvalidArgument: invalid argument: out of bounds",
+    "InvalidArgument: invalid argument: out of bounds",
+    "InvalidArgument: invalid argument: out of bounds",
+    "InvalidArgument: invalid argument: out of bounds",
+    "InvalidArgument: invalid argument: out of bounds",
+    "InvalidArgument: invalid argument: out of bounds",
+    "InvalidArgument: invalid argument: out of bounds"
+  ],
+  "scenario": "mixed",
+  "seed": 20243
+}

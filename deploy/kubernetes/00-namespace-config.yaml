@@ -1,0 +1,27 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: kingdoms-of-dominion
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: kd-config
+  namespace: kingdoms-of-dominion
+data:
+  KD_DEV_MODE: "false"
+  KD_NATS_URL: "nats://nats:4222"
+  KD_GLOBAL_DB_URL: "postgres://kd:$(KD_DB_PASSWORD)@global-db:5432/kd_global"
+  KD_CONTROL_PLANE_GRPC: "http://control-plane:50051"
+  KD_REALMS: "realm-a:shard_a:12345,realm-b:shard_b:67890"
+  RUST_LOG: "info"
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: kd-secrets
+  namespace: kingdoms-of-dominion
+type: Opaque
+stringData:
+  KD_JWT_SECRET: "REPLACE_WITH_SECRET"
+  KD_DB_PASSWORD: "REPLACE_WITH_SECRET"

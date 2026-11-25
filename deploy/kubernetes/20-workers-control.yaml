@@ -1,0 +1,112 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: control-plane
+  namespace: kingdoms-of-dominion
+spec:
+  replicas: 2
+  selector: { matchLabels: { app: control-plane } }
+  template:
+    metadata: { labels: { app: control-plane } }
+    spec:
+      containers:
+        - name: control-plane
+          image: kd/rust:1.0.0
+          command: ["/usr/local/bin/control-plane"]
+          ports:
+            - { containerPort: 50051 }
+            - { containerPort: 8080 }
+          envFrom:
+            - configMapRef: { name: kd-config }
+            - secretRef: { name: kd-secrets }
+          env:
+            - { name: KD_GRPC_ADDR, value: "0.0.0.0:50051" }
+            - { name: KD_HTTP_ADDR, value: "0.0.0.0:8080" }
+          resources:
+            requests: { cpu: "200m", memory: "256Mi" }
+            limits: { cpu: "1", memory: "512Mi" }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: control-plane
+  namespace: kingdoms-of-dominion
+spec:
+  selector: { app: control-plane }
+  ports: [{ port: 50051, targetPort: 50051 }]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: realm-worker-a
+  namespace: kingdoms-of-dominion
+spec:
+  replicas: 1
+  strategy: { type: Recreate }
+  selector: { matchLabels: { app: realm-worker-a } }
+  template:
+    metadata: { labels: { app: realm-worker-a } }
+    spec:
+      containers:
+        - name: realm-worker
+          image: kd/rust:1.0.0
+          command: ["/usr/local/bin/realm-worker"]
+          ports: [{ containerPort: 50052 }]
+          envFrom:
+            - configMapRef: { name: kd-config }
+            - secretRef: { name: kd-secrets }
+          env:
+            - { name: KD_WORKER_ID, value: "worker-a" }
+            - { name: KD_WORKER_REALMS, value: "realm-a" }
+            - { name: KD_GRPC_ADDR, value: "0.0.0.0:50052" }
+            - { name: KD_SHARD_DBS__SHARD_A, valueFrom: { secretKeyRef: { name: kd-secrets, key: SHARD_A_DSN } } }
+          resources:
+            requests: { cpu: "500m", memory: "512Mi" }
+            limits: { cpu: "2", memory: "2Gi" }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: realm-worker-b
+  namespace: kingdoms-of-dominion
+spec:
+  replicas: 1
+  strategy: { type: Recreate }
+  selector: { matchLabels: { app: realm-worker-b } }
+  template:
+    metadata: { labels: { app: realm-worker-b } }
+    spec:
+      containers:
+        - name: realm-worker
+          image: kd/rust:1.0.0
+          command: ["/usr/local/bin/realm-worker"]
+          ports: [{ containerPort: 50052 }]
+          envFrom:
+            - configMapRef: { name: kd-config }
+            - secretRef: { name: kd-secrets }
+          env:
+            - { name: KD_WORKER_ID, value: "worker-b" }
+            - { name: KD_WORKER_REALMS, value: "realm-b" }
+            - { name: KD_GRPC_ADDR, value: "0.0.0.0:50052" }
+            - { name: KD_SHARD_DBS__SHARD_B, valueFrom: { secretKeyRef: { name: kd-secrets, key: SHARD_B_DSN } } }
+          resources:
+            requests: { cpu: "500m", memory: "512Mi" }
+            limits: { cpu: "2", memory: "2Gi" }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: realm-worker-a
+  namespace: kingdoms-of-dominion
+spec:
+  selector: { app: realm-worker-a }
+  ports: [{ port: 50052, targetPort: 50052 }]
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: realm-worker-b
+  namespace: kingdoms-of-dominion
+spec:
+  selector: { app: realm-worker-b }
+  ports: [{ port: 50052, targetPort: 50052 }]

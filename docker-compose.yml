@@ -1,0 +1,211 @@
+name: kd
+
+x-rust-env: &rust-env
+  KD_JWT_SECRET: local-development-secret-not-for-production
+  KD_INTERNAL_SECRET: dev-internal-secret-change-me
+  KD_DEV_MODE: "true"
+  KD_NATS_URL: nats://nats:4222
+  KD_VALKEY_URL: redis://valkey:6379
+  KD_GLOBAL_DB_URL: postgres://kd:kd@global-db:5432/kd_global
+  KD_SHARD_DBS__SHARD_A: postgres://kd:kd@realm-db-a:5432/kd_realm_a
+  KD_SHARD_DBS__SHARD_B: postgres://kd:kd@realm-db-b:5432/kd_realm_b
+  KD_REALMS: realm-a:shard_a:12345,realm-b:shard_b:67890
+  KD_CONTROL_PLANE_GRPC: http://control-plane:50051
+  KD_LEASE_SECS: "30"
+  KD_SCHEDULER_INTERVAL_MS: "100"
+  KD_OUTBOX_INTERVAL_MS: "100"
+  # Payments: left unset so the payments service uses its local dev stub.
+  # Set these to test keys (and expose a payments container) for Stripe work.
+  # KD_PUBLIC_BASE_URL: http://localhost:8088
+  # KD_STRIPE_SECRET_KEY: sk_test_...
+  # KD_STRIPE_WEBHOOK_SECRET: whsec_...
+  RUST_LOG: info
+
+services:
+  global-db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: kd
+      POSTGRES_PASSWORD: kd
+      POSTGRES_DB: kd_global
+    volumes:
+      - global-data:/var/lib/postgresql/data
+    ports:
+      - "15432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U kd -d kd_global"]
+      interval: 2s
+      timeout: 2s
+      retries: 30
+
+  realm-db-a:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: kd
+      POSTGRES_PASSWORD: kd
+      POSTGRES_DB: kd_realm_a
+    volumes:
+      - realm-a-data:/var/lib/postgresql/data
+    ports:
+      - "15433:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U kd -d kd_realm_a"]
+      interval: 2s
+      timeout: 2s
+      retries: 30
+
+  realm-db-b:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: kd
+      POSTGRES_PASSWORD: kd
+      POSTGRES_DB: kd_realm_b
+    volumes:
+      - realm-b-data:/var/lib/postgresql/data
+    ports:
+      - "15434:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U kd -d kd_realm_b"]
+      interval: 2s
+      timeout: 2s
+      retries: 30
+
+  nats:
+    image: nats:2.11-alpine
+    command: ["-js", "-m", "8222", "-sd", "/data"]
+    volumes:
+      - nats-data:/data
+    ports:
+      - "4222:4222"
+      - "8222:8222"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O- http://localhost:8222/healthz | grep -q ok"]
+      interval: 2s
+      timeout: 2s
+      retries: 30
+
+  valkey:
+    image: valkey/valkey:8-alpine
+    command: ["valkey-server", "--save", "", "--appendonly", "no"]
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "valkey-cli", "ping"]
+      interval: 2s
+      timeout: 2s
+      retries: 30
+
+  control-plane:
+    build:
+      context: .
+    image: kd/rust:local
+    entrypoint: ["/usr/local/bin/control-plane"]
+    environment:
+      <<: *rust-env
+      KD_HTTP_ADDR: 0.0.0.0:8080
+      KD_GRPC_ADDR: 0.0.0.0:50051
+    depends_on:
+      global-db: { condition: service_healthy }
+      realm-db-a: { condition: service_healthy }
+      realm-db-b: { condition: service_healthy }
+    ports:
+      - "8082:8080"
+
+  realm-worker-a:
+    build:
+      context: .
+    image: kd/rust:local
+    entrypoint: ["/usr/local/bin/realm-worker"]
+    environment:
+      <<: *rust-env
+      KD_WORKER_ID: worker-a
+      KD_WORKER_REALMS: realm-a
+      KD_GRPC_ADDR: 0.0.0.0:50052
+    depends_on:
+      control-plane: { condition: service_started }
+      realm-db-a: { condition: service_healthy }
+      nats: { condition: service_healthy }
+
+  realm-worker-b:
+    build:
+      context: .
+    image: kd/rust:local
+    entrypoint: ["/usr/local/bin/realm-worker"]
+    environment:
+      <<: *rust-env
+      KD_WORKER_ID: worker-b
+      KD_WORKER_REALMS: realm-b
+      KD_GRPC_ADDR: 0.0.0.0:50052
+    depends_on:
+      control-plane: { condition: service_started }
+      realm-db-b: { condition: service_healthy }
+      nats: { condition: service_healthy }
+
+
+  payments:
+    build:
+      context: .
+    entrypoint: ["/usr/local/bin/payments"]
+    environment:
+      KD_HTTP_ADDR: 0.0.0.0:8080
+      KD_PUBLIC_BASE_URL: http://localhost:8084
+      # No KD_STRIPE_SECRET_KEY in dev: the local stub checkout is used.
+    ports:
+      - "8084:8080"
+
+  outbox-worker:
+    build:
+      context: .
+    image: kd/rust:local
+    entrypoint: ["/usr/local/bin/outbox-worker"]
+    environment:
+      <<: *rust-env
+      KD_HTTP_ADDR: 0.0.0.0:8080
+    depends_on:
+      realm-db-a: { condition: service_healthy }
+      realm-db-b: { condition: service_healthy }
+      nats: { condition: service_healthy }
+    ports:
+      - "8083:8080"
+
+  gateway-a:
+    build:
+      context: .
+    image: kd/rust:local
+    entrypoint: ["/usr/local/bin/gateway"]
+    environment:
+      <<: *rust-env
+      KD_HTTP_ADDR: 0.0.0.0:8080
+      KD_WORKER_BY_SHARD__SHARD_A: http://realm-worker-a:50052
+      KD_WORKER_BY_SHARD__SHARD_B: http://realm-worker-b:50052
+    depends_on:
+      control-plane: { condition: service_started }
+      nats: { condition: service_healthy }
+      realm-worker-a: { condition: service_started }
+      realm-worker-b: { condition: service_started }
+    ports:
+      - "8080:8080"
+
+  gateway-b:
+    build:
+      context: .
+    image: kd/rust:local
+    entrypoint: ["/usr/local/bin/gateway"]
+    environment:
+      <<: *rust-env
+      KD_HTTP_ADDR: 0.0.0.0:8080
+      KD_WORKER_BY_SHARD__SHARD_A: http://realm-worker-a:50052
+      KD_WORKER_BY_SHARD__SHARD_B: http://realm-worker-b:50052
+    depends_on:
+      control-plane: { condition: service_started }
+      nats: { condition: service_healthy }
+      realm-worker-a: { condition: service_started }
+      realm-worker-b: { condition: service_started }
+    ports:
+      - "8081:8080"
+
+volumes:
+  global-data:
+  realm-a-data:
+  realm-b-data:
+  nats-data:

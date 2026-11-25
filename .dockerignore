@@ -1,0 +1,6 @@
+target/
+.git/
+clients/
+docs/
+*.log
+flutter-sdk/

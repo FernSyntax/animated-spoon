@@ -1,0 +1,66 @@
+[workspace]
+resolver = "2"
+members = [
+  "crates/kd-proto",
+  "crates/kd-common",
+  "crates/kd-domain",
+  "crates/kd-store",
+  "crates/kd-engine",
+  "services/control-plane",
+  "services/gateway",
+  "services/realm-worker",
+  "services/outbox-worker",
+  "services/loadgen",
+  "services/payments",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+rust-version = "1.99"
+
+[workspace.dependencies]
+kd-common = { path = "crates/kd-common" }
+kd-domain = { path = "crates/kd-domain" }
+kd-proto = { path = "crates/kd-proto" }
+kd-store = { path = "crates/kd-store" }
+kd-engine = { path = "crates/kd-engine" }
+tokio = { version = "1.43", features = ["full"] }
+axum = { version = "0.8", features = ["ws", "macros"] }
+tower = "0.5"
+tower-http = { version = "0.6", features = ["trace", "cors", "limit"] }
+tonic = "0.13"
+prost = "0.13"
+prost-types = "0.13"
+sqlx = { version = "0.8", features = ["runtime-tokio", "tls-rustls", "postgres", "uuid", "chrono", "json", "macros", "migrate"] }
+hmac = "0.12"
+subtle = "2.6"
+base64 = "0.22"
+url = "2.5"
+uuid = { version = "1.13", features = ["v4", "serde"] }
+chrono = { version = "0.4", features = ["serde"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+argon2 = "0.5"
+rand = "0.8"
+sha2 = "0.10"
+jsonwebtoken = "9.3"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
+metrics = "0.24"
+metrics-exporter-prometheus = "0.16"
+anyhow = "1.0"
+thiserror = "2.0"
+futures = "0.3"
+async-trait = "0.1"
+reqwest = { version = "0.12", features = ["json", "rustls-tls"] }
+tokio-tungstenite = { version = "0.26", features = ["rustls-tls-webpki-roots", "connect"] }
+proptest = "1.6"
+rstest = "0.24"
+clap = { version = "4.5", features = ["derive", "env"] }
+tracing-opentelemetry = "0.30"
+opentelemetry = "0.29"
+opentelemetry-otlp = { version = "0.29", features = ["grpc-tonic"] }
+opentelemetry_sdk = "0.29"
+async-nats = "0.38"

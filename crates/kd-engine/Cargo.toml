@@ -1,0 +1,22 @@
+[package]
+name = "kd-engine"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+kd-common.workspace = true
+kd-domain.workspace = true
+kd-proto.workspace = true
+sqlx.workspace = true
+serde_json.workspace = true
+chrono.workspace = true
+uuid.workspace = true
+tracing.workspace = true
+anyhow.workspace = true
+sha2.workspace = true
+prost.workspace = true
+
+[dev-dependencies]
+tokio.workspace = true
+kd-store.workspace = true

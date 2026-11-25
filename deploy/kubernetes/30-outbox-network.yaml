@@ -1,0 +1,37 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: outbox-worker
+  namespace: kingdoms-of-dominion
+spec:
+  replicas: 2
+  selector: { matchLabels: { app: outbox-worker } }
+  template:
+    metadata: { labels: { app: outbox-worker } }
+    spec:
+      containers:
+        - name: outbox-worker
+          image: kd/rust:1.0.0
+          command: ["/usr/local/bin/outbox-worker"]
+          envFrom:
+            - configMapRef: { name: kd-config }
+            - secretRef: { name: kd-secrets }
+          resources:
+            requests: { cpu: "100m", memory: "128Mi" }
+            limits: { cpu: "500m", memory: "256Mi" }
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: kd-default-deny
+  namespace: kingdoms-of-dominion
+spec:
+  podSelector: {}
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - podSelector: { matchLabels: { app: gateway } }
+        - podSelector: { matchLabels: { app: control-plane } }
+        - podSelector: { matchLabels: { app: realm-worker-a } }
+        - podSelector: { matchLabels: { app: realm-worker-b } }
+        - podSelector: { matchLabels: { app: outbox-worker } }

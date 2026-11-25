@@ -1,0 +1,9 @@
+# Clippy configuration shared by the whole workspace.
+#
+# The engine models commands with several contextual identifiers (realm,
+# player, city, ...) and nested future/tuple state. These thresholds document
+# that reality instead of forcing blanket `#[allow]` attributes throughout the
+# code. Functionality stays checked; only the arbitrary size limits move.
+
+too-many-arguments-threshold = 8
+type-complexity-threshold = 400
