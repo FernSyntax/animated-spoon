@@ -31,7 +31,7 @@ axum = { version = "0.8", features = ["ws", "macros"] }
 tower = "0.5"
 tower-http = { version = "0.6", features = ["trace", "cors", "limit"] }
 tonic = "0.13"
-prost = "0.13"
+prost = "0.14"
 prost-types = "0.13"
 sqlx = { version = "0.8", features = ["runtime-tokio", "tls-rustls", "postgres", "uuid", "chrono", "json", "macros", "migrate"] }
 hmac = "0.12"
