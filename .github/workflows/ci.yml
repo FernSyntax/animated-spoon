@@ -54,7 +54,7 @@ jobs:
         image: valkey/valkey:8
         ports: ['6379:6379']
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - uses: dtolnay/rust-toolchain@1.99.0
         with:
@@ -97,7 +97,7 @@ jobs:
     runs-on: ubuntu-latest
     continue-on-error: true
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: taiki-e/install-action@cargo-audit
       - name: Audit Cargo.lock
         run: cargo audit
@@ -109,7 +109,7 @@ jobs:
     name: Flutter · analyze, format, test
     runs-on: ubuntu-22.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: subosito/flutter-action@v2
         with:
           flutter-version: ${{ env.FLUTTER_VERSION }}
@@ -157,7 +157,7 @@ jobs:
             os: windows-latest
             artifact: clients/game/build/windows/x64/runner/Release
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - uses: subosito/flutter-action@v2
         with:
@@ -218,7 +218,7 @@ jobs:
     name: Deployment templates
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Validate Docker Compose
         run: docker compose config >/dev/null
