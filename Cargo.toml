@@ -33,7 +33,7 @@ tower-http = { version = "0.6", features = ["trace", "cors", "limit"] }
 tonic = "0.13"
 prost = "0.13"
 prost-types = "0.13"
-sqlx = { version = "0.8", features = ["runtime-tokio", "tls-rustls", "postgres", "uuid", "chrono", "json", "macros", "migrate"] }
+sqlx = { version = "0.9", features = ["runtime-tokio", "tls-rustls", "postgres", "uuid", "chrono", "json", "macros", "migrate"] }
 hmac = "0.12"
 subtle = "2.6"
 base64 = "0.22"
